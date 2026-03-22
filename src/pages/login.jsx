@@ -13,42 +13,35 @@ import { Eye, EyeOff } from "lucide-react";
 
 /* ── Create both docs on first login ── */
 async function ensureUserDocs(user, extraData = {}) {
-  // 1. users/{uid} — for follow/connection arrays
-  const userRef = doc(db, "users", user.uid);
+  const displayName = user.displayName || extraData.displayName || "";
+  const photoURL    = user.photoURL    || null;
+  const email       = user.email       || "";
+
+  // 1. users/{uid}
+  const userRef  = doc(db, "users", user.uid);
   const userSnap = await getDoc(userRef);
   if (!userSnap.exists()) {
     await setDoc(userRef, {
-      uid:         user.uid,
-      email:       user.email       || "",
-      displayName: user.displayName || extraData.displayName || "",
-      photoURL:    user.photoURL    || null,
-      followers:   [],
-      following:   [],
-      pendingIn:   [],
-      pendingOut:  [],
-      connections: [],
-      createdAt:   serverTimestamp(),
+      uid, email, displayName, photoURL,
+      followers: [], following: [], pendingIn: [],
+      pendingOut: [], connections: [],
+      createdAt: serverTimestamp(),
     });
   }
 
-  // 2. profile/{uid} — for editable profile data
-  const profileRef = doc(db, "profile", user.uid);
+  // 2. profile/{uid} — source of truth for follow arrays + profile data
+  const profileRef  = doc(db, "profile", user.uid);
   const profileSnap = await getDoc(profileRef);
   if (!profileSnap.exists()) {
     await setDoc(profileRef, {
-      uid:         user.uid,
-      email:       user.email       || "",
-      displayName: user.displayName || extraData.displayName || "",
-      photoURL:    user.photoURL    || null,
-      username:    "",
-      bio:         "",
-      location:    "",
-      website:     "",
-      coverURL:    null,
-      roles:       [],
-      skills:      [],
-      createdAt:   serverTimestamp(),
-      updatedAt:   serverTimestamp(),
+      uid: user.uid, email, displayName, photoURL,
+      username: "", bio: "", location: "", website: "",
+      coverURL: null, roles: [], skills: [],
+      // follow arrays live here
+      followers: [], following: [], pendingIn: [],
+      pendingOut: [], connections: [],
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
     });
   }
 }
@@ -61,14 +54,17 @@ const inputStyle = {
 
 const friendlyError = (code) => {
   switch (code) {
-    case "auth/user-not-found":       return "No account found with this email.";
-    case "auth/wrong-password":       return "Incorrect password.";
-    case "auth/invalid-credential":   return "Incorrect email or password.";
-    case "auth/email-already-in-use": return "This email is already registered.";
-    case "auth/weak-password":        return "Password must be at least 6 characters.";
-    case "auth/invalid-email":        return "Please enter a valid email address.";
-    case "auth/popup-closed-by-user": return "Google sign-in was cancelled.";
-    default:                          return "Something went wrong. Please try again.";
+    case "auth/user-not-found":        return "No account found with this email.";
+    case "auth/wrong-password":        return "Incorrect password.";
+    case "auth/invalid-credential":    return "Incorrect email or password.";
+    case "auth/email-already-in-use":  return "This email is already registered.";
+    case "auth/weak-password":         return "Password must be at least 6 characters.";
+    case "auth/invalid-email":         return "Please enter a valid email address.";
+    case "auth/popup-closed-by-user":  return "Google sign-in was cancelled.";
+    case "auth/popup-blocked":         return "Popup was blocked. Please allow popups for this site.";
+    case "auth/unauthorized-domain":   return "This domain is not authorized. Add it in Firebase Console → Auth → Authorized domains.";
+    case "auth/cancelled-popup-request": return "Sign-in cancelled.";
+    default:                           return "Something went wrong. Please try again.";
   }
 };
 
@@ -108,7 +104,9 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      const cred = await signInWithPopup(auth, new GoogleAuthProvider());
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: "select_account" });
+      const cred = await signInWithPopup(auth, provider);
       await ensureUserDocs(cred.user);
       navigate("/feed");
     } catch (e) {
@@ -155,6 +153,7 @@ export default function LoginPage() {
           display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
           fontWeight: 600, fontSize: 14, color: "#0f172a", cursor: "pointer",
           marginBottom: 20, transition: "background .15s",
+          opacity: loading ? 0.7 : 1,
         }}
           onMouseEnter={e => e.currentTarget.style.background = "#f8fafc"}
           onMouseLeave={e => e.currentTarget.style.background = "#fff"}
@@ -165,7 +164,7 @@ export default function LoginPage() {
             <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
             <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.36-8.16 2.36-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
           </svg>
-          Continue with Google
+          {loading ? "Please wait…" : "Continue with Google"}
         </button>
 
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
@@ -174,7 +173,6 @@ export default function LoginPage() {
           <div style={{ flex: 1, height: 1, background: "#f1f5f9" }} />
         </div>
 
-        {/* Name (signup only) */}
         {mode === "signup" && (
           <div style={{ marginBottom: 14 }}>
             <label style={{ fontSize: 13, fontWeight: 600, color: "#374151", display: "block", marginBottom: 6 }}>Full name</label>
@@ -182,7 +180,6 @@ export default function LoginPage() {
           </div>
         )}
 
-        {/* Email */}
         <div style={{ marginBottom: 14 }}>
           <label style={{ fontSize: 13, fontWeight: 600, color: "#374151", display: "block", marginBottom: 6 }}>Email</label>
           <input type="email" value={email} onChange={e => setEmail(e.target.value)}
@@ -190,7 +187,6 @@ export default function LoginPage() {
             onKeyDown={e => e.key === "Enter" && handleSubmit()} />
         </div>
 
-        {/* Password */}
         <div style={{ marginBottom: 22 }}>
           <label style={{ fontSize: 13, fontWeight: 600, color: "#374151", display: "block", marginBottom: 6 }}>Password</label>
           <div style={{ position: "relative" }}>
