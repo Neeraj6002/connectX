@@ -6,6 +6,7 @@ import {
 import { db } from "../lib/firebase-config";
 import { useAuth } from "../context/AuthContext";
 import { UserCheck, Clock, Users } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 function Avatar({ name, photoURL, size = 48 }) {
   return (
@@ -47,6 +48,7 @@ function Tab({ label, icon: Icon, active, onClick }) {
 }
 
 function UserCard({ user, tab, onAccept, onDecline, onUnfollow, onRemove, loading }) {
+  const navigate = useNavigate();
   const name = user.displayName || user.email?.split("@")[0] || "User";
   return (
     <div style={{
@@ -56,7 +58,12 @@ function UserCard({ user, tab, onAccept, onDecline, onUnfollow, onRemove, loadin
     }}>
       <Avatar name={name} photoURL={user.photoURL} size={50} />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 700, fontSize: 15, color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        <div
+          onClick={() => navigate(`/user/${user.uid}`)}
+          style={{ fontWeight: 700, fontSize: 15, color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer", display: "inline-block" }}
+          onMouseEnter={e => e.currentTarget.style.color = "#7c3aed"}
+          onMouseLeave={e => e.currentTarget.style.color = "#0f172a"}
+        >
           {name}
         </div>
         <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: user.skills?.length ? 6 : 0 }}>
@@ -96,10 +103,10 @@ function UserCard({ user, tab, onAccept, onDecline, onUnfollow, onRemove, loadin
           }}>{loading ? "…" : "Remove"}</button>
         )}
         {tab === "connections" && (
-          <span style={{
-            padding: "8px 16px", borderRadius: 10,
-            background: "#f5f3ff", color: "#7c3aed", fontWeight: 700, fontSize: 13,
-          }}>Connected</span>
+          <button
+            onClick={() => navigate(`/user/${user.uid}`)}
+            style={{ padding: "8px 16px", borderRadius: 10, border: "none", background: "#f5f3ff", color: "#7c3aed", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
+          >View Profile</button>
         )}
       </div>
     </div>

@@ -7,6 +7,7 @@ import ConnectionsPage from "./pages/connections";
 import DiscoverPage from "./pages/discover";
 import ProfilePage from "./pages/profile";
 import LoginPage from "./pages/login";
+import UserProfilePage from "./pages/UserProfile";
 
 /* Redirect to /login if not logged in */
 function PrivateRoute({ children }) {
@@ -41,6 +42,7 @@ export default function App() {
           <Route path="connections" element={<ConnectionsPage />} />
           <Route path="discover"    element={<DiscoverPage />} />
           <Route path="profile"     element={<ProfilePage />} />
+          <Route path="user/:uid"   element={<UserProfilePage />} />
         </Route>
 
         {/* Any unknown route → login */}

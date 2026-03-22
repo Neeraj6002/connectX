@@ -5,7 +5,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../lib/firebase-config";
 import { useAuth } from "../context/AuthContext";
-import { Search, MapPin, Users, UserPlus, UserCheck, MessageCircle } from "lucide-react";
+import { Search, MapPin, Users, UserPlus, UserCheck, MessageCircle, ExternalLink } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 function Avatar({ name, photoURL, size = 48 }) {
@@ -19,6 +19,7 @@ function Avatar({ name, photoURL, size = 48 }) {
 }
 
 function UserCard({ user, isFollowing, onFollow, onUnfollow, onMessage }) {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const name = user.displayName || user.email?.split("@")[0] || "User";
 
@@ -80,6 +81,17 @@ function UserCard({ user, isFollowing, onFollow, onUnfollow, onMessage }) {
                 {isFollowing ? <UserCheck size={12} /> : <UserPlus size={12} />}
                 {loading ? "…" : isFollowing ? "Following" : "Follow"}
               </button>
+              <button
+                onClick={() => navigate(`/user/${user.uid}`)}
+                title="View profile"
+                style={{
+                  width: 30, height: 30, borderRadius: 8, border: "1px solid #e2e8f0",
+                  background: "#fff", display: "flex", alignItems: "center",
+                  justifyContent: "center", cursor: "pointer", color: "#64748b", transition: "all .15s",
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = "#f5f3ff"; e.currentTarget.style.color = "#7c3aed"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "#fff"; e.currentTarget.style.color = "#64748b"; }}
+              ><ExternalLink size={13} /></button>
               <button
                 onClick={() => onMessage(user)}
                 style={{
